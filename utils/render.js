@@ -34,11 +34,11 @@ function workLoop(deadline) {
     // 调用performUnitOfWork执行渲染工作
     nextUnitOfWork = performUnitOfWork(nextUnitOfWork) // 返回新的unit任务
     // 一个单元渲染完后检查是否有足够的剩余时间
-    // 剩余时间足够大于1，有足够的时间进行下一次的渲染，则一直进入渲染跑本次workLoop
-    // 剩余时间不够小于1，没有足够的时间进行下一次的渲染，终止渲染，则跳出循环，等下一次浏览器空闲再请求
+    // 浏览器空闲时间足够大于1，有足够的时间进行下一次的渲染，则一直进入渲染跑本次workLoop
+    // 浏览器空闲时间不够小于1，没有足够的时间进行下一次的渲染，终止渲染，则跳出循环，等下一次浏览器空闲再请求
     shouldYield = deadline.timeRemaining() < 1  // timeRemaining剩余时间大于1说明浏览器空闲 跳出循环
   }
-  // 剩余时间不够，调用requestIdleCallback，让浏览器在空闲的时候进行workLoop
+  // 浏览器空闲时间不够，再次调用requestIdleCallback，让浏览器在空闲的时候继续进行workLoop
   requestIdleCallback(workLoop)
 }
 
