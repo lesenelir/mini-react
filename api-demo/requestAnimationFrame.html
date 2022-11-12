@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>requestAnimationFrame Demo</title>
+    <style>
+      #root {
+        width: 100px;
+        height: 100px;
+        background-color: darkseagreen;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script>
+      let start
+      let root = document.getElementById('root')
+
+      function animate(startTimer) {
+        if (!start) {
+          start = startTimer
+        }
+        console.log(startTimer)
+        root.style.transform = 'translateX(' + startTimer * 0.01 + 'px)'
+        if (startTimer < 10000) {
+          window.requestAnimationFrame(animate)
+        }
+      }
+      // 浏览器重绘回调用callback
+      window.requestAnimationFrame(animate)
+    </script>
+  </body>
+</html>

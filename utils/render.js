@@ -24,7 +24,8 @@ function render(element, container) {
 let nextUnitOfWork = null
 
 
-// 调度： 通过workLoop调度整个渲染
+// 调度： 通过workLoop调度整个渲染，workLoop是作为requestIdleCallback的参数
+// deadline 是一个对象
 function workLoop(deadline) {
   // 是否要停止渲染： false
   let shouldYield = false

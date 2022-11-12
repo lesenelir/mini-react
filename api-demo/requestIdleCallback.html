@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>requestIdleCallback</title>
+  </head>
+  <body>
+    <script>
+      function sleep(duration) {
+        let now = Date.now()
+        while (duration + now > Date.now()) {
+          console.log('sleep...')
+        }
+      }
+      // sleep(2000)
+      // console.log(123)
+
+      let works = [
+        () => {
+          console.log('work 1')
+        },
+        () => {
+          console.log('work 2')
+        },
+        () => {
+          console.log('work 3')
+        },
+        () => {
+          console.log('work 4')
+        },
+        () => {
+          console.log('work 5')
+        }
+      ]
+
+      // 放入requestIdleCallback 要有一个deadline
+      // workLoop 是 放入requestIdleCallback的参数
+      // deadline 有一个 timeRemaining()函数
+      function workLoop(deadline) {
+        console.log('剩余空闲时间: ', deadline)
+        while (deadline.timeRemaining() > 1 && works.length) {
+          performUnitOfWork()
+        }
+        if (works.length) {
+          window.requestIdleCallback(workLoop)
+        }
+      }
+
+      // 执行每一个unit
+      function performUnitOfWork() {
+        let work = works.shift()
+        work()
+      }
+      window.requestIdleCallback(workLoop)
+    </script>
+  </body>
+</html>
