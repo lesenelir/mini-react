@@ -17,8 +17,21 @@ const element = MyReact.createElement(
 
 console.log(element)
 
-// element元素节点
 /**
+ *  DOM结构：
+ *    -- 即使有class属性，但是id属性优先级更高
+ *
+ *  <div id='foo'>
+ *    "Hello "
+ *    <a>Lesenelir</a>
+ *    <b></b>
+ *  </div>
+ */
+
+
+/**
+ *  element节点：
+ *
  *  {
  *    type: 'div',
  *    props: {
