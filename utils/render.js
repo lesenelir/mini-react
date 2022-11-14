@@ -21,6 +21,7 @@ function createDom(fiber) {
 
 
 let nextUnitOfWork = null
+let wipRoot = null
 
 
 /**
@@ -33,7 +34,18 @@ function render(element, container) {
   // 第一个root fiber： unit of work
   // 初始化第一个工作 (fiber)
   // fiber元素的数据结构
-  nextUnitOfWork = {
+  // nextUnitOfWork = {
+  //   dom: container,
+  //   props: {
+  //     children: [element]
+  //   },
+  //   child: null,
+  //   sibling: null,
+  //   parent: null
+  // }
+
+  // workingInProgressRoot 正在渲染的根
+  wipRoot = {
     dom: container,
     props: {
       children: [element]
@@ -42,6 +54,31 @@ function render(element, container) {
     sibling: null,
     parent: null
   }
+
+  nextUnitOfWork = wipRoot
+}
+
+
+function commitRoot() {
+  // TODO add nodes to dom
+  // 当完成了整个渲染（所有unit单元都执行完），将整颗fiber Tree to the dom
+  commitWork(wipRoot.child)
+  wipRoot = null
+}
+
+
+function commitWork(fiber) {
+  if (!fiber) {
+    return
+  }
+
+  // 父节点的dom
+  const domParent = fiber.parent.dom
+  domParent.appendChild(fiber.dom)
+  // commit阶段是同步的
+  // 使用递归来保证同步性
+  commitWork(fiber.child)
+  commitWork(fiber.sibling)
 }
 
 
@@ -58,6 +95,13 @@ function workLoop(deadline) {
     nextUnitOfWork = performUnitOfWork(nextUnitOfWork)
     // 剩余时间小于1ms，没有足够的时间进行下一次渲染，则退出while
     shouldYield = deadline.timeRemaining() < 1
+  }
+
+  // 检查所有的unit of work 是否都做完了
+  // wipRoot是否全部渲染完毕
+  // commit阶段
+  if (!nextUnitOfWork && wipRoot) {
+    commitRoot()
   }
 
   requestIdleCallback(workLoop)
@@ -86,9 +130,9 @@ function performUnitOfWork(fiber) {
     fiber.dom = createDom(fiber)
   }
   // 将fiber dom追加到fiber父节点
-  if (fiber.parent) {
-    fiber.parent.dom.appendChild(fiber.dom)
-  }
+  // if (fiber.parent) {
+  //   fiber.parent.dom.appendChild(fiber.dom)
+  // }
 
   // 2. create a new fiber
   const elements = fiber.props.children  // elements 是整个数组里的对象
