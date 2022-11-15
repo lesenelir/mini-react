@@ -75,3 +75,20 @@ console.log(element)
 
 const container = document.getElementById("root")
 MyReact.render(element, container)
+
+
+// const handleInput = (e) => {
+//   renderer(e.target.value)
+// }
+//
+// const testRender = (value) => {
+//   const container = document.getElementById('root')
+//   const element = MyReact.createElement(
+//     'div',
+//     null,
+//     MyReact.createElement('input', {oninput: e => handleInput(e)}, null),
+//     MyReact.createElement('h1', null, value)
+//   )
+//   MyReact.render(element, container)
+// }
+// testRender('Hello')

@@ -22,6 +22,8 @@ function createDom(fiber) {
 
 let nextUnitOfWork = null
 let wipRoot = null
+let currentRoot = null
+let deletions = null  // 记录所有要删除的节点
 
 
 /**
@@ -52,8 +54,10 @@ function render(element, container) {
     },
     child: null,
     sibling: null,
-    parent: null
+    parent: null,
+    alternate: currentRoot  // 当前fiber的上一个fiber
   }
+  deletions = []
 
   nextUnitOfWork = wipRoot
 }
@@ -61,9 +65,54 @@ function render(element, container) {
 
 function commitRoot() {
   // TODO add nodes to dom
+  deletions.forEach(commitWork)
   // 当完成了整个渲染（所有unit单元都执行完），将整颗fiber Tree to the dom
   commitWork(wipRoot.child)
+  currentRoot = wipRoot
   wipRoot = null
+}
+
+
+function updateDom(dom, preProps, nextProps) {
+  // 对比两次props来决定怎么更新
+
+  // 删除已经没有的或者发生变化的事件处理函数
+  const isEvent = key => key.startsWith('on')
+  Object.keys(preProps)
+    .filter(isEvent)
+    .filter(key => !key in nextProps || preProps[key] !== nextProps[key])
+    .forEach(key => {
+      const eventType = key.toLowerCase().substring(2)
+      dom.removeEventListener(eventType, preProps[key])
+    })
+
+  // 添加事件处理函数
+  Object.keys(nextProps)
+    .filter(isEvent)
+    .filter(key => preProps[key] !== nextProps[key])
+    .forEach(key => {
+      const eventType = key.toLowerCase().substring(2)
+      dom.addEventListener(eventType, nextProps[key])
+    })
+
+  // Remove old properties
+  // 删除已经没有的props
+  Object.keys(preProps)
+    .filter(key => key !== 'children')
+    .filter(key => !key in nextProps)
+    .forEach(key => {
+      dom[key] = ''
+    })
+
+  // Set new or changed properties
+  // 赋予新的、改变的、props
+  Object.keys(nextProps)
+    .filter(key => key !== 'children')
+    .filter(key => !key in preProps || preProps[key] !== nextProps[key])
+    .forEach(key => {
+      dom[key] = nextProps[key]
+    })
+
 }
 
 
@@ -74,7 +123,19 @@ function commitWork(fiber) {
 
   // 父节点的dom
   const domParent = fiber.parent.dom
-  domParent.appendChild(fiber.dom)
+  // domParent.appendChild(fiber.dom)
+  if (fiber.effectTag === 'PLACEMENT' && fiber.dom != null) {
+    domParent.appendChild(fiber.dom)
+  } else if (fiber.effectTag === 'UPDATE' && fiber.dom != null) {
+    updateDom(
+     fiber.dom,
+     fiber.alternate.props,
+     fiber.props
+    )
+  } else if (fiber.effectTag === 'DELETION' && fiber.dom != null) {
+    domParent.removeChild(fiber.dom)
+  }
+
   // commit阶段是同步的
   // 使用递归来保证同步性
   commitWork(fiber.child)
@@ -112,6 +173,67 @@ function workLoop(deadline) {
 requestIdleCallback(workLoop)
 
 
+function reconcileChildren(wipFiber, elements) {
+  let index = 0
+  // fiber的child 只能有一个
+  let oldFiber = wipFiber.alternate && wipFiber.alternate.child
+  let prevSibling = null
+
+  while (index < elements.length || oldFiber) {
+    const element = elements[index]
+    const sameType = element && oldFiber && element.type === oldFiber.type
+    let newFiber = null
+
+    // Diff的三种情况
+    if (sameType) {
+      // 更新 保存DOM
+      newFiber = {
+        type: oldFiber.type,
+        props: element.props,
+        dom: oldFiber.dom, // 省去了创建新DOM的过程，性能优化
+        parent: wipFiber,
+        alternate: oldFiber,
+        effectTag: 'UPDATE'
+      }
+    }
+    if (element && !sameType) {
+      // 新建
+      newFiber = {
+        type: element.type,
+        props: element.props,
+        dom: null,
+        parent: wipFiber,
+        alternate: null,
+        effectTag: 'PLACEMENT'
+      }
+    }
+    if (oldFiber && !sameType) {
+      // 删除
+      oldFiber.effectTag = 'DELETION'
+      deletions.push(oldFiber)
+    }
+
+    if (oldFiber) {
+      // 一个fiber只能有一个child，如果要遍历多个child，则需要遍历child的sibling
+      oldFiber = oldFiber.sibling
+    }
+
+    // 将新创建的fiber元素 添加到fiber tree数据结构中
+    // 如果新创建的fiber元素是first child 则是child
+    // 如果不是first child 则是sibling
+    if (index === 0) {
+      wipFiber.child = newFiber
+    } else {
+      prevSibling.sibling = newFiber
+    }
+    prevSibling = newFiber
+
+    index++
+  }
+
+}
+
+
 /**
  * 执行一个渲染单元(fiber)，并返回下一个fiber (unit of work)
  * @param fiber
@@ -137,31 +259,34 @@ function performUnitOfWork(fiber) {
   // 2. create a new fiber
   const elements = fiber.props.children  // elements 是整个数组里的对象
   console.log(elements)
+
+  // 新建newFiber，构建fiber整个节点
+  reconcileChildren(fiber, elements)
   let prevSibling = null
 
   // 构建fiber的联系
-  for (let i = 0; i < elements.length; i++) {
-    const element = elements[i]
-
-    const newFiber = {
-      type: element.type,
-      props: element.props,
-      dom: null,
-      child: null,
-      sibling: null,
-      parent: fiber
-    }
-
-    // 将新创建的fiber元素 添加到fiber tree数据结构中
-    // 如果新创建的fiber元素是first child 则是child
-    // 如果不是first child 则是sibling
-    if (i === 0) {
-      fiber.child = newFiber
-    } else {
-      prevSibling.sibling = newFiber
-    }
-    prevSibling = newFiber
-  }
+  // for (let i = 0; i < elements.length; i++) {
+  //   const element = elements[i]
+  //
+  //   const newFiber = {
+  //     type: element.type,
+  //     props: element.props,
+  //     dom: null,
+  //     child: null,
+  //     sibling: null,
+  //     parent: fiber
+  //   }
+  //
+  //   // 将新创建的fiber元素 添加到fiber tree数据结构中
+  //   // 如果新创建的fiber元素是first child 则是child
+  //   // 如果不是first child 则是sibling
+  //   if (i === 0) {
+  //     fiber.child = newFiber
+  //   } else {
+  //     prevSibling.sibling = newFiber
+  //   }
+  //   prevSibling = newFiber
+  // }
 
 
   // 3. search for the next unit of work and return it
