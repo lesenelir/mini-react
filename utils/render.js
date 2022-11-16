@@ -122,7 +122,14 @@ function commitWork(fiber) {
   }
 
   // 父节点的dom
-  const domParent = fiber.parent.dom
+  // const domParent = fiber.parent.dom
+  let domParentFiber = fiber.parent
+  while (!domParentFiber.dom) {
+    domParentFiber = domParentFiber.parent
+  }
+  const domParent = domParentFiber.dom
+
+
   // domParent.appendChild(fiber.dom)
   if (fiber.effectTag === 'PLACEMENT' && fiber.dom != null) {
     domParent.appendChild(fiber.dom)
@@ -133,13 +140,27 @@ function commitWork(fiber) {
      fiber.props
     )
   } else if (fiber.effectTag === 'DELETION' && fiber.dom != null) {
-    domParent.removeChild(fiber.dom)
+    // domParent.removeChild(fiber.dom)
+    commitDeletion(fiber, domParent)
   }
 
   // commit阶段是同步的
   // 使用递归来保证同步性
   commitWork(fiber.child)
   commitWork(fiber.sibling)
+}
+
+
+/**
+ * @param fiber
+ * @param domParent
+ */
+function commitDeletion(fiber, domParent) {
+  if (fiber.dom) {
+    domParent.removeChild(fiber.dom)
+  } else {
+    commitDeletion(fiber.child, domParent)
+  }
 }
 
 
@@ -247,22 +268,31 @@ function performUnitOfWork(fiber) {
 
   console.log(fiber)
 
-  // 1. create dom node
-  if (!fiber.dom) {
-    fiber.dom = createDom(fiber)
+  const isFunctionComponent = fiber.type instanceof Function
+
+  if (isFunctionComponent) {
+    // 函数式组件没有dom
+    updateFunctionComponent(fiber)
+  } else {
+     updateHostComponent(fiber)
   }
+
+  // 1. create dom node
+  // if (!fiber.dom) {
+  //   fiber.dom = createDom(fiber)
+  // }
   // 将fiber dom追加到fiber父节点
   // if (fiber.parent) {
   //   fiber.parent.dom.appendChild(fiber.dom)
   // }
 
   // 2. create a new fiber
-  const elements = fiber.props.children  // elements 是整个数组里的对象
-  console.log(elements)
-
-  // 新建newFiber，构建fiber整个节点
-  reconcileChildren(fiber, elements)
-  let prevSibling = null
+  // const elements = fiber.props.children  // elements 是整个数组里的对象
+  // console.log(elements)
+  //
+  // // 新建newFiber，构建fiber整个节点
+  // reconcileChildren(fiber, elements)
+  // let prevSibling = null
 
   // 构建fiber的联系
   // for (let i = 0; i < elements.length; i++) {
@@ -303,6 +333,20 @@ function performUnitOfWork(fiber) {
     nextFiber = nextFiber.parent
   }
 
+}
+
+
+function updateFunctionComponent(fiber) {
+  // 运行function component to get child
+  const children = [fiber.type(fiber.props)]
+  reconcileChildren(fiber, children)
+}
+
+function updateHostComponent(fiber) {
+  if (!fiber.dom) {
+    fiber.dom = createDom(fiber)
+  }
+  reconcileChildren(fiber, fiber.props.children)
 }
 
 

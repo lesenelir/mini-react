@@ -7,18 +7,18 @@ const MyReact = {
 }
 
 
-const element = MyReact.createElement(
-  "div",
-  {id: "foo", class: 'hello'},
-  'Hello ',
-  MyReact.createElement('a', null, 'Lesenelir'),
-  MyReact.createElement('b')
-)
-
-console.log(element)
+// const element = MyReact.createElement(
+//   "div",
+//   {id: "foo", class: 'hello'},
+//   'Hello ',
+//   MyReact.createElement('a', null, 'Lesenelir'),
+//   MyReact.createElement('b')
+// )
+//
+// console.log(element)
 
 /**
- *  DOM结构：
+ *  DOM结构 JSX：
  *    -- 即使有class属性，但是id属性优先级更高
  *
  *  <div id='foo'>
@@ -27,7 +27,6 @@ console.log(element)
  *    <b></b>
  *  </div>
  */
-
 
 /**
  *  element节点：
@@ -72,6 +71,23 @@ console.log(element)
  *    }
  *  }
  */
+
+function App(props) {
+  return MyReact.createElement(
+    'h1',
+    null,
+    'hi ',
+    props.name
+  )
+}
+
+// const element = <App name="foo" />
+// createElement 可以接受一个function component
+const element = MyReact.createElement(
+  App,
+  {name: 'Lesenelir'}
+)
+
 
 const container = document.getElementById("root")
 MyReact.render(element, container)
