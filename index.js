@@ -1,9 +1,11 @@
 import createElement from "./utils/createElement"
 import render from "./utils/render"
+import {useState} from "./utils/render"
 
 const MyReact = {
   createElement,
-  render
+  render,
+  useState
 }
 
 
@@ -72,21 +74,35 @@ const MyReact = {
  *  }
  */
 
-function App(props) {
-  return MyReact.createElement(
-    'h1',
-    null,
-    'hi ',
-    props.name
+// function App(props) {
+//   return MyReact.createElement(
+//     'h1',
+//     null,
+//     'hi ',
+//     props.name
+//   )
+// }
+//
+// // const element = <App name="foo" />
+// // createElement 可以接受一个function component
+// const element = MyReact.createElement(
+//   App,
+//   {name: 'Lesenelir'}
+// )
+//
+
+function Counter() {
+  const [state, setState] = MyReact.useState(1)
+
+  return (
+    MyReact.createElement(
+      'h1',
+      {onclick: () => setState(pre => pre + 1)},
+      state
+    )
   )
 }
-
-// const element = <App name="foo" />
-// createElement 可以接受一个function component
-const element = MyReact.createElement(
-  App,
-  {name: 'Lesenelir'}
-)
+const element = MyReact.createElement(Counter)
 
 
 const container = document.getElementById("root")
