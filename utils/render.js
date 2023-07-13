@@ -263,7 +263,7 @@ function reconcileChildren(wipFiber, elements) {
 function performUnitOfWork(fiber) {
   // 执行一个 unit of work 需要做的事情：
   // 1. add the element to the DOM
-  // 2. create the fibers for the elements's children
+  // 2. create the fibers for the element's children
   // 3. select the next unit of work
 
   console.log(fiber)
