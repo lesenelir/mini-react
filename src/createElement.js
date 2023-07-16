@@ -1,3 +1,4 @@
+// JSX 会负责将下面的代码转换成 createElement 函数的调用
 // const element = (
 //   <div id='foo'>
 //     <a>bar</a>
