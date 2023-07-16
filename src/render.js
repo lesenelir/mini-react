@@ -1,3 +1,7 @@
+/**
+ * @param element object
+ * @param container dom
+ */
 function render(element, container) {
   const dom =
     element.type === 'TEXT_ELEMENT'
@@ -8,6 +12,7 @@ function render(element, container) {
     dom[name] = element.props[name]
   })
 
+  // 子元素递归进行渲染
   element.props.children.forEach((child) => {
     render(child, dom)
   })
