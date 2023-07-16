@@ -1,7 +1,9 @@
 import createElement from "./createElement"
+import render from "./render"
 
 const myReact = {
   createElement,
+  render
 }
 
 /**
@@ -12,6 +14,9 @@ const myReact = {
  *    props: {
  *      id: 'foo',
  *      class: 'hello',
+ *      style: {
+ *        color: 'blue'
+ *      }
  *      children: [
  *        // 文本节点
  *        {
@@ -23,7 +28,7 @@ const myReact = {
  *        },
  *        // 元素节点
  *        {
- *          type: 'a',
+ *          type: 'div',
  *          props: {
  *            children: [
  *              {
@@ -42,10 +47,14 @@ const myReact = {
  */
 const element =  myReact.createElement(
   'div',
-  { id: 'foo', class: 'bar'},
+  { id: 'foo', class: 'bar', style: 'color: blue' },
   'Hello',
-  myReact.createElement('a', null, 'bar'),
+  myReact.createElement('div', null, 'bar'),
 )
+
+// 渲染
+const container = document.getElementById('root')
+myReact.render(element, container)
 
 console.log(element)
 
