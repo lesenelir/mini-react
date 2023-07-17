@@ -45,6 +45,9 @@ const myReact = {
  *  }
  *
  */
+
+//      babel                                createDom
+// JSX  ----->  createElement  -----> object  ----->  dom  ----->  render
 const element =  myReact.createElement(
   'div',
   { id: 'foo', class: 'bar', style: 'color: blue' },
