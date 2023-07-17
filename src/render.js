@@ -20,7 +20,7 @@
 //   container.append(dom)
 // }
 
-// 根据对象创建 DOM 节点
+// Create a dom based on the fiber
 function createDom(fiber) {
   const dom =
     fiber.type === 'TEXT_ELEMENT'
@@ -35,20 +35,49 @@ function createDom(fiber) {
 }
 
 let nextUnitOfWork = null
+let wipRoot = null  // workInProgressTree => keep track of the root of the fiber tree.
+
+function commitRoot() {
+  // add fiber tree to dom (commit phase)
+  commitWork(wipRoot.child)
+  wipRoot = null
+}
+
+function commitWork(fiber) {
+  if (!fiber) return
+
+  // 前序遍历 递归
+  const domParent = fiber.parent.dom
+  domParent.appendChild(fiber.dom)
+  commitWork(fiber.child)
+  commitWork(fiber.sibling)
+}
 
 // render
 function render(element, container) {
   // set first unit of work (first fiber)
-  // 初始化第一个 root fiber, root fiber 第一个 container 是 div#root
-  nextUnitOfWork = {
+  // initial the first root fiber, root fiber 第一个 container 是 div#root
+  // nextUnitOfWork = {
+  //   dom: container,
+  //   props: {
+  //     children: [element] // 把整个 element 作为 root fiber 的子元素
+  //   },
+  //   child: null,
+  //   sibling: null,
+  //   parent: null
+  // }
+
+  wipRoot = {
     dom: container,
     props: {
-      children: [element] // 把整个 element 作为 root fiber 的子元素
+      children: [element]
     },
     child: null,
     sibling: null,
     parent: null
   }
+
+  nextUnitOfWork = wipRoot
 }
 
 /**
@@ -76,6 +105,10 @@ function workLoop(deadline) {
     shouldYield = deadline.timeRemaining() < 1
   }
 
+  if (!nextUnitOfWork && wipRoot) {
+    commitRoot()
+  }
+
   // 为了让浏览器空闲时继续执行任务，重新调用 requestIdleCallback
   requestIdleCallback(workLoop)
 }
@@ -86,7 +119,7 @@ requestIdleCallback(workLoop)
 /**
  * 该函数： 执行一个渲染工作，并返回一个渲染工作； ===> build fiber tree
  *
- * 主要分为三个步骤：
+ * 主要分为三个步骤：（没有 commit 阶段的情况）
  *  1. 将元素添加到 DOM 节点上
  *  2. 为元素创建下一个新的工作单元 fiber
  *  3. 选择下一个工作单元
@@ -98,9 +131,11 @@ function performUnitOfWork(fiber) {
     fiber.dom = createDom(fiber)
   }
 
-  if (fiber.parent) {
-    fiber.parent.dom.appendChild(fiber.dom)
-  }
+  // Adding new dom node to the dom tree, but there is a problem that the browser will interrupt the rendering process.
+  // The user will see an incomplete UI. So, we need render and commit phase.
+  // if (fiber.parent) {
+  //   fiber.parent.dom.appendChild(fiber.dom)
+  // }
 
   // 2. create new fiber
   // This step is purpose to create new fiber, and then add it to the fiber tree, and then return it.
