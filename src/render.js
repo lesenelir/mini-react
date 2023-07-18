@@ -34,11 +34,57 @@ function createDom(fiber) {
   return dom
 }
 
+const isEvent = key => key.startsWith("on") // 特殊的属性： 事件 （以 on 开头）
+
+function updateDom(dom, prevProps, nextProps) {
+  // element and oldFiber have the same type (div), but they don't have the same props
+  // thus, need to compare the props and update the dom
+
+  // 1. remove or changed event listeners
+  Object.keys(prevProps)
+    .filter(isEvent)
+    .filter(key => !(key in nextProps) || prevProps[key] !== nextProps[key])
+    .forEach((name) => {
+      const eventType = name.toLowerCase().substring(2)
+
+      dom.removeEventListener(eventType, prevProps[name])
+    })
+
+  // 2. add event listeners
+  Object.keys(nextProps)
+    .filter(isEvent)
+    .filter(key => prevProps[key] !== nextProps[key])
+    .forEach((name) => {
+      const eventType = name.toLowerCase().substring(2)
+
+      dom.addEventListener(eventType, nextProps[name])
+    })
+
+  // 3. remove old props
+  Object.keys(prevProps)
+    .filter(key => key !== 'children')
+    .filter(key => !key in nextProps)
+    .forEach(name => {
+      dom[name] = ""
+    })
+
+  // 4. ser new props
+  Object.keys(nextProps)
+    .filter(key => key !== 'children')
+    .filter(key => !(key in prevProps) || prevProps[key] !== nextProps[key])
+    .forEach(name => {
+      dom[name] = nextProps[name]
+    })
+
+}
+
 let nextUnitOfWork = null
 let wipRoot = null  // workInProgressTree => keep track of the root of the fiber tree.
+let deletions = null // keep track of the nodes that need to be deleted
 
 function commitRoot() {
   // add fiber tree to dom (commit phase)
+  deletions.forEach(commitWork)
   commitWork(wipRoot.child)
   wipRoot = null
 }
@@ -48,7 +94,14 @@ function commitWork(fiber) {
 
   // 前序遍历 递归
   const domParent = fiber.parent.dom
-  domParent.appendChild(fiber.dom)
+  if (fiber.effectTag === 'PLACEMENT' && fiber.dom !== null) {
+    domParent.appendChild(fiber.dom)
+  } else if (fiber.effectTag === 'DELETION') {
+    domParent.removeChild(fiber.dom)
+  } else if (fiber.effectTag === 'UPDATE' && fiber.dom !== null) {
+    updateDom(fiber.dom, fiber.alternate.props, fiber.props)
+  }
+
   commitWork(fiber.child)
   commitWork(fiber.sibling)
 }
@@ -74,9 +127,10 @@ function render(element, container) {
     },
     child: null,
     sibling: null,
-    parent: null
+    parent: null,
   }
 
+  deletions = []
   nextUnitOfWork = wipRoot
 }
 
@@ -139,30 +193,33 @@ function performUnitOfWork(fiber) {
 
   // 2. create new fiber
   // This step is purpose to create new fiber, and then add it to the fiber tree, and then return it.
+  // const elements = fiber.props.children
+  // let index = 0
+  // let prevSibling = null // 当前正在处理 fiber 的前一个兄弟 fiber
+  //
+  // while (index < elements.length) {
+  //   const element = elements[index]
+  //
+  //   const newFiber = {
+  //     type: element.type,
+  //     props: element.props,
+  //     parent: fiber,
+  //     dom: null
+  //   }
+  //
+  //   // add it to fiber tree
+  //   if (index === 0) {
+  //     fiber.child = newFiber // newFiber 挂载到 fiber 的 child 属性上 （第一个子元素）
+  //   } else {
+  //     prevSibling.sibling = newFiber // no child, add to sibling (第二个及以后的子元素)
+  //   }
+  //
+  //   prevSibling = newFiber
+  //   index++
+  // }
+
   const elements = fiber.props.children
-  let index = 0
-  let prevSibling = null // 当前正在处理 fiber 的前一个兄弟 fiber
-
-  while (index < elements.length) {
-    const element = elements[index]
-
-    const newFiber = {
-      type: element.type,
-      props: element.props,
-      parent: fiber,
-      dom: null
-    }
-
-    // add it to fiber tree
-    if (index === 0) {
-      fiber.child = newFiber // newFiber 挂载到 fiber 的 child 属性上 （第一个子元素）
-    } else {
-      prevSibling.sibling = newFiber // no child, add to sibling (第二个及以后的子元素)
-    }
-
-    prevSibling = newFiber
-    index++
-  }
+  reconcileChildren(fiber, elements) // 新建 fiber，构建 fiber tree
 
   // 3. return next unit of work (next fiber)
   // search for next unit of work
@@ -177,6 +234,72 @@ function performUnitOfWork(fiber) {
     }
     nextFiber = nextFiber.parent
   }
+}
+
+
+// The parameter wiFiber is the current fiber, and elements is the children of the current fiber.
+// Diffing algorithm -> optimize create new fiber process
+function reconcileChildren(wipFiber, elements) {
+  // 2. create new fiber
+  // This step is purpose to create new fiber, and then add it to the fiber tree, and then return it.
+  let index = 0
+  let oldFiber = wipFiber.alternate && wipFiber.alternate.child // rendered fiber tree last time
+  let prevSibling = null // 当前正在处理 fiber 的前一个兄弟 fiber
+
+  while (index < elements.length || oldFiber) {
+    const element = elements[index] // current element
+    let newFiber = null
+
+    // compare oldFiber and element
+    // 查看 oldFiber 和 workInProgressFiber 的 element 的 type 是否相同
+    const sameType = oldFiber && element && element.type === oldFiber.type
+
+    if (sameType) {
+      // update the node
+      newFiber = {
+        type: oldFiber.type,
+        props: element.props,
+        dom: oldFiber.dom,    // 继承之前的 dom 节点， 不需要新创建 dom，更有利于性能
+        parent: wipFiber,
+        alternate: oldFiber,
+        effectTag: 'UPDATE'
+      }
+    }
+
+    if (!sameType && element) {
+      // add new node
+      newFiber = {
+        type: element.type,
+        props: element.props,
+        dom: null,
+        parent: wipFiber,
+        alternate: null,
+        effectTag: 'PLACEMENT'
+      }
+    }
+
+    if (!sameType && oldFiber) {
+      // delete old node
+      // don't need to create newFiber, just add effectTag to oldFiber
+      oldFiber.effectTag = 'DELETION'
+      deletions.push(oldFiber)
+    }
+
+    if (oldFiber) {
+      oldFiber = oldFiber.sibling
+    }
+
+    // build a new Fiber tree
+    if (index === 0) {
+      wipFiber.child = newFiber // newFiber 挂载到 fiber 的 child 属性上 （第一个子元素）
+    } else if (element) {
+      prevSibling.sibling = newFiber // no child, add to sibling (第二个及以后的子元素)
+    }
+
+    prevSibling = newFiber
+    index++
+  }
+
 }
 
 

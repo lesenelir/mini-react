@@ -6,6 +6,14 @@ const myReact = {
   render
 }
 
+
+const handleInput = (e) => {
+  const oH1 = document.getElementById('h1')
+  oH1.innerText = 'Hello ' +  e.target.value
+  console.log(oH1)
+  console.log('input')
+}
+
 /**
  *  最后创建的对象如下：
  *
@@ -39,6 +47,32 @@ const myReact = {
  *              }
  *            ]
  *          }
+ *        },
+ *        // 元素节点
+ *        {
+ *          type: 'input',
+ *          props: {
+ *            id: 'input',
+ *            oninput: handleInput,
+ *            children: []
+ *          }
+ *        },
+ *        // 元素节点
+ *        {
+ *          type: 'h1',
+ *          props: {
+ *            id: 'h1',
+ *            children: [
+ *              // 文本节点
+ *              {
+ *                type: 'TEXT_ELEMENT',
+ *                props: {
+ *                  nodeValue: 'Hello',
+ *                  children: []
+ *                }
+ *              }
+ *            ]
+ *          }
  *        }
  *      ]
  *    }
@@ -53,6 +87,8 @@ const element =  myReact.createElement(
   { id: 'foo', class: 'bar', style: 'color: blue' },
   'Hello',
   myReact.createElement('div', null, 'bar'),
+  myReact.createElement('input', {id: 'input', oninput: handleInput}, null),
+  myReact.createElement('h1', {id: 'h1'}, 'Hello')
 )
 
 // 渲染
