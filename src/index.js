@@ -82,17 +82,37 @@ const handleInput = (e) => {
 
 //      babel                                createDom
 // JSX  ----->  createElement  -----> object  ----->  dom  ----->  render
-const element =  myReact.createElement(
-  'div',
-  { id: 'foo', class: 'bar', style: 'color: blue' },
-  'Hello',
-  myReact.createElement('div', null, 'bar'),
-  myReact.createElement('input', {id: 'input', oninput: handleInput}, null),
-  myReact.createElement('h1', {id: 'h1'}, 'Hello')
-)
+// const element =  myReact.createElement(
+//   'div',
+//   { id: 'foo', class: 'bar', style: 'color: blue' },
+//   'Hello',
+//   myReact.createElement('div', null, 'bar'),
+//   myReact.createElement('input', {id: 'input', oninput: handleInput}, null),
+//   myReact.createElement('h1', {id: 'h1'}, 'Hello')
+// )
+
+
+// Root Component
+/**
+ * <div>
+ *   <h1>Hello</h1>
+ *   <p>{props.name}</p>
+ * </div>
+ */
+function App(props) {
+  return myReact.createElement(
+    'div',
+    { id: 'foo', class: 'bar', style: 'color: blue' },
+    myReact.createElement('div', null, 'bar'),
+    myReact.createElement('input', {id: 'input', oninput: handleInput}, null),
+    myReact.createElement('h1', {id: 'h1'}, 'Hello'),
+    myReact.createElement('p', null, props.name)
+  )
+}
 
 // 渲染
 const container = document.getElementById('root')
+const element = myReact.createElement(App, { name: 'Lesenelir' })
 myReact.render(element, container)
 
 console.log(element)
